@@ -2,7 +2,6 @@ use super::*;
 use std::marker::PhantomData;
 
 pub struct EVM<MaxDataPointsPerPackage> {
-    // todo: need better way to handle this MaxDataPointsPerPackage generic parameter configured by runtime
     data: PhantomData<MaxDataPointsPerPackage>,
 }
 impl<MaxDataPointsPerPackage: Get<u32> + Debug> DataPackageSpecification
@@ -42,7 +41,6 @@ impl<MaxDataPointsPerPackage: Get<u32> + Debug> DataPackageSpecification
 }
 
 pub struct Substrate<MaxDataPointsPerPackage> {
-    // todo: need better way to handle this max generic parameter configured by runtime
     data: PhantomData<MaxDataPointsPerPackage>,
 }
 impl<MaxDataPointsPerPackage: Get<u32> + Debug> DataPackageSpecification
@@ -83,6 +81,7 @@ mod tests {
     use frame_support::traits::ConstU32;
     use sp_core::bytes::{from_hex, to_hex};
     use sp_core::{bounded_vec, ecdsa, keccak_256, Pair};
+    use std::array::TryFromSliceError;
 
     const BTC_BYTES_32_HEX_STR: &str =
         "4254430000000000000000000000000000000000000000000000000000000000";
@@ -107,9 +106,10 @@ mod tests {
         type MaxDataPackagesPerPayload = MaxDataPackagesPerPayload;
         type MaxUnsignedMetadataLen = MaxUnsignedMetadataLen;
     }
-    impl Convert<Value, u128> for Config {
-        fn convert(value: Value) -> u128 {
-            u128::from_be_bytes(value[16..].try_into().unwrap())
+    impl TryConvert<Value, u128> for Config {
+        type Error = TryFromSliceError;
+        fn try_convert(value: Value) -> Result<u128, Self::Error> {
+            Ok(u128::from_be_bytes(value[16..].try_into()?))
         }
     }
 

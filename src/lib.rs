@@ -23,11 +23,11 @@ mod specifications;
 
 // The config used to decode signed off-chain data packages to on-chain oracle data.
 pub trait Config {
-    // The type of data package.
+    // The type of data package specification.
     type DataPackageSpecification: DataPackageSpecification;
     // A converter for converting between a data point value and a result.
     // todo: can this be improved?
-    type ValueConverter: Convert<
+    type ValueConverter: TryConvert<
         <<Self as Config>::DataPackageSpecification as DataPackageSpecification>::Value,
         Self::Result,
     >;
@@ -49,11 +49,10 @@ pub trait DataPackageSpecification {
     type Timestamp: Debug;
     // The type of signature scheme used to sign the data.
     type Signature: Pair;
-    // The maximum data points per data package, configured by the runtime.
-    // todo: can this be improved?
+    // The maximum data points per data package.
     type MaxDataPointsPerPackage: Get<u32> + Debug;
 
-    // Verifies a data package by checking its signature against authorised signers.
+    // Verifies a data package by checking its signature against the provided authorised signers.
     fn verify<'a>(
         data_package: &DataPackage<
             DataPoint<Self::FeedId, Self::Value>,
@@ -65,10 +64,9 @@ pub trait DataPackageSpecification {
     ) -> Option<&'a <Self::Signature as Pair>::Public>;
 }
 
-// todo; change to try convert
-pub trait Convert<A, B> {
-    /// Make conversion.
-    fn convert(a: A) -> B;
+pub trait TryConvert<A, B> {
+    type Error;
+    fn try_convert(a: A) -> Result<B, Self::Error>;
 }
 
 #[derive(Decode, Encode, MaxEncodedLen, RuntimeDebug, TypeInfo)]
@@ -100,6 +98,7 @@ pub struct DataPoint<FeedId, Value> {
 #[derive(Debug)]
 pub enum Error {
     CannotTakeMedianOfEmptyArray,
+    ValueConversionError,
 }
 
 // Used internally within a pallet extrinsic to extract oracle values from submitted extrinsic parameter (of type `PayloadOf<T>`)
@@ -125,7 +124,10 @@ pub fn get_oracle_value<T: Config>(
 
             for point in &package.data_points {
                 if &point.feed_id == feed_id {
-                    values.push(T::ValueConverter::convert(point.value));
+                    match T::ValueConverter::try_convert(point.value) {
+                        Ok(value) => values.push(value),
+                        Err(_) => return Err(Error::ValueConversionError),
+                    }
                 }
             }
         }
@@ -179,3 +181,27 @@ pub type SignatureOf<T> =
 pub type TimestampOf<T> =
     <<T as Config>::DataPackageSpecification as DataPackageSpecification>::Timestamp;
 pub type ValueOf<T> = <<T as Config>::DataPackageSpecification as DataPackageSpecification>::Value;
+
+#[cfg(test)]
+mod tests {
+    use codec::{Decode, Encode};
+    use sp_core::bounded::BoundedVec;
+    use sp_core::ConstU32;
+
+    #[test]
+    fn bounded_vec_encodes_as_vec() {
+        let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let bound_data: BoundedVec<u8, ConstU32<10>> = data.clone().try_into().unwrap();
+        assert_eq!(data.encode(), bound_data.encode());
+    }
+
+    #[test]
+    fn vec_exceeding_bounds_cannot_decode() {
+        let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].encode();
+        if let Err(error) = BoundedVec::<u8, ConstU32<10>>::decode(&mut &data[..]) {
+            assert_eq!("BoundedVec exceeds its limit", error.to_string())
+        } else {
+            panic!()
+        }
+    }
+}
