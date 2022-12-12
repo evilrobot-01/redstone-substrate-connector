@@ -7,18 +7,19 @@ use sp_core::ecdsa::Public;
 use sp_core::{bounded::BoundedVec, Get, RuntimeDebug};
 use std::fmt::Debug;
 
-// RedStone packages oracle data off-chain into a specific format, allowing an end-user to then submit
-// on-chain where it is unpacked to provide access to underlying oracle. This crate is intended to be
-// used by Substrate pallets to easily unpack and verify that data.
+// RedStone packages oracle data off-chain into a specific encoded format, allowing an end-user to
+// then submit data on-chain where it is unpacked and verified to provide access to oracle prices.
+// This crate is intended to be used by Substrate pallets to easily unpack and verify that data.
 // The current implementation uses ECDSA signing, so the below has been designed to allow for this
-// base implementation, but also to allow for a more Substrate-optimised approach via config: a
-// 'SubstrateSigner' could then ideally be incorporated into the RedStone oracle itself, potentially
-// providing more efficient encoding of data using SCALE.
+// base implementation, but also to allow for a more Substrate-optimised approach via config: e.g. a
+// 'SubstrateSigner' could be incorporated into the RedStone oracle itself, potentially providing
+// more efficient encoding of data using SCALE.
 
 // More info at https://github.com/redstone-finance/redstone-oracles-monorepo/tree/main/packages/evm-connector#data-packing-off-chain-data-encoding
 
 // NOTE: there is a reference implementation in the `near` directory which uses near_sdk::env::ecrecover
 // to determine the signer of a package.
+// todo: determine how same can be achieved for Ed/SR25519
 
 // A specification of a data package.
 pub trait DataPackageSpecification {
