@@ -44,6 +44,7 @@ pub trait DataPackageSpecification {
 }
 
 // The signature scheme used to sign data packages.
+// todo: this is currently ecdsa-specific, need a better api to support ed25519 verification - i.e. verify(sig: &Signature, message: M, pubkey: &Public)
 pub trait SignatureScheme {
     // The type of data package.
     type DataPackage;
@@ -51,6 +52,7 @@ pub trait SignatureScheme {
     type Signer: PartialEq;
     // The type of signature.
     type Signature: Debug;
+    // todo: make hasher configurable too?
 
     // Recovers the signer of the data package, for verification against 'trusted' signers.
     fn recover(data_package: &Self::DataPackage) -> Option<Self::Signer>;
@@ -208,6 +210,7 @@ mod ecdsa {
         type Signature = Signature;
 
         fn recover(data_package: &Self::DataPackage) -> Option<Self::Signer> {
+            // todo: use actual data package data
             let message = Vec::new();
             let message = keccak_256(&message);
             data_package.signature.recover_prehashed(&message)
@@ -358,6 +361,7 @@ mod ecdsa {
                     value: from_hex(ETH_VALUE_HEX_STR).unwrap().try_into().unwrap(),
                 }
             ];
+            // todo: use actual data package data
             let message = Vec::new();
             let message_hashed = super::ecdsa::keccak_256(&message);
             let signature = signer_1.sign_prehashed(&message_hashed);
