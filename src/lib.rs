@@ -80,12 +80,42 @@ pub struct Payload<
     unsigned_metadata: BoundedVec<u8, MaxUnsignedMetadataLen>,
 }
 
+impl<DataPackage, MaxDataPackagesPerPayload: Get<u32>, MaxUnsignedMetadataLen: Get<u32>>
+    Payload<DataPackage, MaxDataPackagesPerPayload, MaxUnsignedMetadataLen>
+{
+    pub fn new(
+        data: BoundedVec<DataPackage, MaxDataPackagesPerPayload>,
+        unsigned_metadata: BoundedVec<u8, MaxUnsignedMetadataLen>,
+    ) -> Payload<DataPackage, MaxDataPackagesPerPayload, MaxUnsignedMetadataLen> {
+        Payload {
+            data,
+            unsigned_metadata,
+        }
+    }
+}
+
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo)]
 #[scale_info(skip_type_params(DataPoint, MaxDataPointsPerPackage, Timestamp, Signature))]
 pub struct DataPackage<DataPoint, MaxDataPointsPerPackage: Get<u32>, Timestamp, Signature> {
     data_points: BoundedVec<DataPoint, MaxDataPointsPerPackage>,
     timestamp: Timestamp,
     signature: Signature,
+}
+
+impl<DataPoint, MaxDataPointsPerPackage: Get<u32>, Timestamp, Signature>
+    DataPackage<DataPoint, MaxDataPointsPerPackage, Timestamp, Signature>
+{
+    pub fn new(
+        data_points: BoundedVec<DataPoint, MaxDataPointsPerPackage>,
+        timestamp: Timestamp,
+        signature: Signature,
+    ) -> DataPackage<DataPoint, MaxDataPointsPerPackage, Timestamp, Signature> {
+        DataPackage {
+            data_points,
+            timestamp,
+            signature,
+        }
+    }
 }
 
 #[derive(Encode, Decode, MaxEncodedLen, RuntimeDebug, TypeInfo)]
